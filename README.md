@@ -25,4 +25,4 @@ Keys:
 
 ### Bugs
 
-If you are two blocks long and are (lets say) going up, if you turned left and quickly turn up you can change your direction 180 degrees.
+If you are two blocks long and are (lets say) going up, if you turned left and quickly turned up you can change your direction 180 degrees.
