@@ -22,3 +22,7 @@ Just run the file!
 Keys:
 - q to quit
 - WASD or arrow keys to move
+
+### Bugs
+
+If you are two blocks long and are (lets say) going up, if you turned left and quickly turn up you can change your direction 180 degrees.
