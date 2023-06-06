@@ -132,7 +132,7 @@ worm = Worm()
 
 while True:
     # Clear and print to the terminal
-    if os.name in ('nt, dos'):
+    if os.name == 'nt':
         command = 'cls'
     else:
         command = 'clear'
