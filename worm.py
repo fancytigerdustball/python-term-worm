@@ -1,6 +1,7 @@
 ''' Simple module for the game "Snake" (but with a worm instead) '''
+
 # Import Libraries
-from time import perf_counter as clock
+from time import sleep, perf_counter as clock
 from random import randint
 import pygame as pg
 import bext
@@ -10,7 +11,10 @@ import os
 filename = 'wormbest.json'
 screen = pg.display.set_mode((100, 100))
 width = height = 8
-apple = (4, 4)
+if os.name in ('nt, dos'):
+    command = 'cls'
+else:
+    command = 'clear'
 
 # Load/Create JSON file
 try:
@@ -21,6 +25,10 @@ except (json.decoder.JSONDecodeError, FileNotFoundError):
     with open(filename, 'w') as file:
         json.dump(best, file)
 
+class HitSomethingError(RuntimeError):
+    ''' The worm hit something '''
+    pass
+
 class Events:
     ''' Class for storing key-clicks '''
     w = a = s = d = False
@@ -30,7 +38,9 @@ class Events:
         match key:
             case pg.K_q:
                 if boolean:
-                    self.stop()
+                    pg.quit()
+                    raise SystemExit
+
             case pg.K_w | pg.K_UP:
                 self.w = boolean
             case pg.K_a | pg.K_LEFT:
@@ -41,9 +51,8 @@ class Events:
                 self.d = boolean
 
     def stop(self):
-        ''' Quit game '''
-        pg.quit()
-        raise SystemExit
+        ''' Restart game '''
+        raise HitSomethingError('Oh no I hit something')
     
     def get_wasd(self):
         ''' Return current key attributes '''
@@ -51,10 +60,14 @@ class Events:
 
 class Worm:
     ''' Class for storing the worm's coordinates and length '''
-    history = []
-    length = 2
-    head = (1, 1)
-    angle = 'd'
+
+    def __init__(self):
+        ''' Restart worm '''
+
+        self.history = []
+        self.length = 2
+        self.head = (1, 1)
+        self.angle = 'd'
     
     def get_tail(self):
         ''' Return worm's tail coordinates '''
@@ -128,74 +141,82 @@ class Worm:
         return False
     
 events = Events()
-worm = Worm()
 
+# This loop is to play the game over and over
 while True:
-    # Clear and print to the terminal
-    if os.name == 'nt':
-        command = 'cls'
-    else:
-        command = 'clear'
-    os.system(command)
-    for y in range(height):
-        for x in range(width):
-            block = 'ww'
-            color = 'green'
-            if (x, y) == apple:
-                color = 'red'
-                block = ' `'
-            tail = worm.get_tail()
-            for point in tail:
-                if (x, y) == point:
-                    color = 'magenta'
-                    if point == tail[-1]:
-                        if worm.angle == 'w':
-                            block = "''"
-                        elif worm.angle == 'a':
-                            block = ': '
-                        elif worm.angle == 's':
-                            block = '..'
-                        else:
-                            block = ' :'
+
+    # Catches HitSomethingError
+    try:
+
+        apple = (4, 4)
+        worm = Worm()
+        # This loop is to play the game
+        while True:
+            # Clear and print to the terminal
+            os.system(command)
+            for y in range(height):
+                for x in range(width):
+                    block = 'ww'
+                    color = 'green'
+                    if (x, y) == apple:
+                        color = 'red'
+                        block = ' `'
+                    tail = worm.get_tail()
+                    for point in tail:
+                        if (x, y) == point:
+                            color = 'magenta'
+                            if point == tail[-1]:
+                                if worm.angle == 'w':
+                                    block = "''"
+                                elif worm.angle == 'a':
+                                    block = ': '
+                                elif worm.angle == 's':
+                                    block = '..'
+                                else:
+                                    block = ' :'
+                            else:
+                                block = '  '
+                            break
+                    if block != 'ww':
+                        fg = 'white'
                     else:
-                        block = '  '
-                    break
-            if block != 'ww':
-                fg = 'white'
-            else:
-                fg = 'green'
-            bext.bg(color)
-            bext.fg(fg)
-            print(block, end='')
-            bext.bg('reset')
-            bext.fg('reset')
-        print()
-    print(f'Score: {worm.length - 2}')
-    print(f'Best: {best}')
+                        fg = 'green'
+                    bext.bg(color)
+                    bext.fg(fg)
+                    print(block, end='')
+                    bext.bg('reset')
+                    bext.fg('reset')
+                print()
+            print(f'Score: {worm.length - 2}')
+            print(f'Best: {best}')
 
-    # Change apple if a coordinate was returned
-    new_apple = worm.update()
-    if new_apple:
-        apple = new_apple
-    if worm.length - 2 > best:
-        # Update best
-        best = worm.length - 2
-        with open(filename, 'w') as file:
-            json.dump(best, file)
+            # Change apple if a coordinate was returned
+            new_apple = worm.update()
+            if new_apple:
+                apple = new_apple
+            if worm.length - 2 > best:
+                # Update best
+                best = worm.length - 2
+                with open(filename, 'w') as file:
+                    json.dump(best, file)
 
-    start = clock()
-    updated = False
-    events.w = events.a = events.s = events.d = False
-    start_wasd = events.get_wasd()
-    # Pause
-    while not clock() - start >= 0.2:
-        for event in pg.event.get():
-            if event.type == pg.QUIT:
-                events.stop()
-            elif event.type == pg.KEYDOWN:
-                events.fix_keys(event.key, True)
-            elif event.type == pg.KEYUP:
-                events.fix_keys(event.key, False)
-        if not updated and start_wasd != events.get_wasd():
-            worm.update(True)
-            updated = True
+            start = clock()
+            updated = False
+            events.w = events.a = events.s = events.d = False
+            start_wasd = events.get_wasd()
+            # Pause
+            while not clock() - start >= 0.2:
+                for event in pg.event.get():
+                    if event.type == pg.QUIT:
+                        events.stop()
+                    elif event.type == pg.KEYDOWN:
+                        events.fix_keys(event.key, True)
+                    elif event.type == pg.KEYUP:
+                        events.fix_keys(event.key, False)
+                if not updated and start_wasd != events.get_wasd():
+                    worm.update(True)
+                    updated = True
+
+    except HitSomethingError:
+        print('Oh no!')
+        sleep(1)
